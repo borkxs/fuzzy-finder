@@ -110,6 +110,12 @@ class FuzzyFinderView extends SelectListView
           typeClass = typeClass?.toString().split(/\s+/g)
 
         fileBasename = path.basename(filePath)
+
+        if fileBasename.match(/^index/)
+          # get last directory of path
+          dir = path.parse(filePath).dir.match(/\/(?:.(?!\/))+$/g)[0]
+          fileBasename = dir.slice(1)
+
         baseOffset = projectRelativePath.length - fileBasename.length
 
         @div class: "primary-line file icon #{typeClass.join(' ')}", 'data-name': fileBasename, 'data-path': projectRelativePath, -> highlighter(fileBasename, matches, baseOffset)
@@ -162,6 +168,11 @@ class FuzzyFinderView extends SelectListView
   # This is modified copy/paste from SelectListView#populateList, require jQuery!
   # Should be temporary
 
+  myWeirdMatch: (filter, path) ->
+    regexp = new RegExp("/index.(j|t)sx?$")
+    # regexp = new RegExp(filterQuery + "/index.(j|t)sx?$")
+    return path.match(regexp)?.length
+
   populateAlternateList: ->
 
     return unless @items?
@@ -171,6 +182,20 @@ class FuzzyFinderView extends SelectListView
       filteredItems = fuzzaldrinPlus.filter(@items, filterQuery, key: @getFilterKey())
     else
       filteredItems = @items
+
+    # do our own sorting !!
+
+    filteredItems.sort((a, b) =>
+      aMatch = true if @myWeirdMatch(filterQuery, a.projectRelativePath)
+      bMatch = true if @myWeirdMatch(filterQuery, b.projectRelativePath)
+
+      if aMatch and bMatch
+        return 0
+      if aMatch
+        return -1
+      if bMatch
+        return 1
+    )
 
     @list.empty()
     if filteredItems.length
